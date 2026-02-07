@@ -1,0 +1,35 @@
+CREATE TABLE UserEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    isActive INTEGER DEFAULT 0
+);
+
+CREATE TABLE ScoreEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER NOT NULL,
+    score INTEGER NOT NULL,
+    totalQuestions INTEGER NOT NULL,
+    timestamp INTEGER NOT NULL,
+    FOREIGN KEY(userId) REFERENCES UserEntity(id)
+);
+
+selectAllUsers:
+SELECT * FROM UserEntity;
+
+insertUser:
+INSERT OR IGNORE INTO UserEntity(name, isActive) VALUES (?, 0);
+
+selectActiveUser:
+SELECT * FROM UserEntity WHERE isActive = 1 LIMIT 1;
+
+resetActiveUsers:
+UPDATE UserEntity SET isActive = 0;
+
+setActiveUser:
+UPDATE UserEntity SET isActive = 1 WHERE id = ?;
+
+selectScoresByUser:
+SELECT * FROM ScoreEntity WHERE userId = ? ORDER BY timestamp DESC;
+
+insertScore:
+INSERT INTO ScoreEntity(userId, score, totalQuestions, timestamp) VALUES (?, ?, ?, ?);

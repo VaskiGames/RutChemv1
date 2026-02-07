@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,38 +23,43 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 
-// Stałe rozmiary
 val CELL_SIZE = 65.dp
 val CELL_PADDING = 2.dp
-// Całkowita szerokość i wysokość tabeli (18 kolumn, 10 rzędów)
-val TABLE_WIDTH = 18 * 65f
-val TABLE_HEIGHT = 10 * 65f
 
 @Composable
-fun PeriodicTableScreen(language: AppLanguage) {
+fun PeriodicTableScreen(
+    language: AppLanguage,
+    onBack: () -> Unit
+) {
     var selectedElement by remember { mutableStateOf<Element?>(null) }
-
-    // --- STAN ZOOMU I PRZESUNIĘCIA ---
-    var scale by remember { mutableStateOf(0.5f) } // Startujemy trochę oddaleni
+    var scale by remember { mutableStateOf(0.5f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clipToBounds() // Ważne: nie rysuj poza ekranem
+            .clipToBounds()
             .pointerInput(Unit) {
-                // Detektor gestów (przesuwanie dwoma palcami, przybliżanie)
                 detectTransformGestures { _, pan, zoom, _ ->
                     scale *= zoom
-                    // Ograniczniki zoomu (nie za blisko, nie za daleko)
                     scale = scale.coerceIn(0.3f, 3f)
-
-                    // Przesuwanie (skalujemy przesunięcie, żeby działało naturalnie)
                     offset += pan
                 }
             }
     ) {
-        // --- WARSTWA TABELI ---
+        // --- PRZYCISK POWROTU ---
+        FloatingActionButton(
+            onClick = onBack,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(16.dp)
+                .zIndex(20f),
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wróć")
+        }
+
+        // --- TABELA ---
         Box(
             modifier = Modifier
                 .graphicsLayer(
@@ -62,7 +69,6 @@ fun PeriodicTableScreen(language: AppLanguage) {
                     translationY = offset.y
                 )
         ) {
-            // Rysujemy elementy
             periodicTableData.forEach { element ->
                 val pos = getElementPosition(element)
                 val offsetX = (pos.col - 1) * CELL_SIZE.value
@@ -79,8 +85,7 @@ fun PeriodicTableScreen(language: AppLanguage) {
             }
         }
 
-        // --- PRZYCISK RESETOWANIA WIDOKU (opcjonalny) ---
-        // Pływający przycisk, żeby wrócić do centrum, jak się zgubimy
+        // --- RESET ZOOM ---
         FloatingActionButton(
             onClick = {
                 scale = 0.5f
@@ -89,13 +94,12 @@ fun PeriodicTableScreen(language: AppLanguage) {
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
-                .zIndex(10f), // Zawsze na wierzchu
+                .zIndex(10f),
             containerColor = MaterialTheme.colorScheme.primary
         ) {
-            Text("Reset", color = MaterialTheme.colorScheme.onPrimary)
+            Text("Reset")
         }
 
-        // --- DYMEK ZE SZCZEGÓŁAMI ---
         if (selectedElement != null) {
             ElementDetailDialog(
                 element = selectedElement!!,
@@ -106,13 +110,10 @@ fun PeriodicTableScreen(language: AppLanguage) {
     }
 }
 
-// --- RESZTA FUNKCJI BEZ ZMIAN (ElementCell, ElementDetailDialog, getElementPosition, getElementColor) ---
-// (Wklej tutaj te same funkcje pomocnicze co w poprzednim kroku, bo są idealne)
-
+// --- Funkcje pomocnicze (bez zmian) ---
 @Composable
 fun ElementCell(element: Element, modifier: Modifier, onClick: () -> Unit) {
     val backgroundColor = getElementColor(element)
-
     Card(
         modifier = modifier.clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
@@ -124,28 +125,9 @@ fun ElementCell(element: Element, modifier: Modifier, onClick: () -> Unit) {
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = "${element.number}",
-                style = MaterialTheme.typography.labelSmall,
-                fontSize = 10.sp,
-                lineHeight = 10.sp
-            )
-            Text(
-                text = element.symbol,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = Color.Black
-            )
-            Text(
-                text = "%.2f".format(element.mass),
-                style = MaterialTheme.typography.labelSmall,
-                fontSize = 8.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                maxLines = 1
-            )
+            Text("${element.number}", style = MaterialTheme.typography.labelSmall, fontSize = 10.sp, lineHeight = 10.sp)
+            Text(element.symbol, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
+            Text("%.2f".format(element.mass), style = MaterialTheme.typography.labelSmall, fontSize = 8.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, maxLines = 1)
         }
     }
 }
@@ -159,20 +141,10 @@ fun ElementDetailDialog(element: Element, language: AppLanguage, onDismiss: () -
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("OK") }
-        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(60.dp)
-                        .background(getElementColor(element), shape = RoundedCornerShape(8.dp))
-                        .border(1.dp, Color.Black, RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(element.symbol, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                }
+                Box(modifier = Modifier.size(60.dp).background(getElementColor(element), RoundedCornerShape(8.dp)).border(1.dp, Color.Black, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) { Text(element.symbol, fontSize = 24.sp, fontWeight = FontWeight.Bold) }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(element.getName(language), style = MaterialTheme.typography.headlineSmall)
@@ -182,7 +154,7 @@ fun ElementDetailDialog(element: Element, language: AppLanguage, onDismiss: () -
         },
         text = {
             Column {
-                Divider()
+                HorizontalDivider()
                 Spacer(modifier = Modifier.height(8.dp))
                 DetailRow(nameLabel, element.getName(language))
                 DetailRow("Symbol", element.symbol)
@@ -196,22 +168,17 @@ fun ElementDetailDialog(element: Element, language: AppLanguage, onDismiss: () -
 
 @Composable
 fun DetailRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontWeight = FontWeight.Bold)
         Text(value)
     }
 }
 
 data class GridPos(val row: Int, val col: Int)
-
 fun getElementPosition(element: Element): GridPos {
     val n = element.number
     if (n in 57..71) return GridPos(row = 9, col = n - 57 + 3)
     if (n in 89..103) return GridPos(row = 10, col = n - 89 + 3)
-
     return when {
         n == 1 -> GridPos(1, 1)
         n == 2 -> GridPos(1, 18)

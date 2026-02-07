@@ -2,6 +2,8 @@ package com.rutchem.app
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,24 +19,36 @@ enum class QuizCategory { SYMBOL, MASS, NUMBER, ALL }
 data class QuizQuestion(val text: String, val options: List<String>, val correctIndex: Int)
 
 @Composable
-fun QuizScreen(category: QuizCategory, language: AppLanguage) { // <--- Odbieramy język
+fun QuizScreen(
+    category: QuizCategory,
+    language: AppLanguage,
+    onBack: () -> Unit // <-- Dodany parametr
+) {
     var score by remember { mutableStateOf(0) }
-    // Przekazujemy język do generatora
     var currentQuestion by remember { mutableStateOf(generateQuestion(category, language)) }
     var selectedOption by remember { mutableStateOf<Int?>(null) }
     var isAnswerCorrect by remember { mutableStateOf(false) }
 
     val scoreText = if (language == AppLanguage.PL) "Wynik: $score" else "Score: $score"
-    val nextText = if (language == AppLanguage.PL) "Następne pytanie" else "Next Question"
+    val nextText = if (language == AppLanguage.PL) "Następne" else "Next"
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(scoreText, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.height(40.dp))
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
 
+        // Pasek górny: Wróć + Wynik
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wróć")
+            }
+            Text(scoreText, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Pytanie
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -49,6 +63,7 @@ fun QuizScreen(category: QuizCategory, language: AppLanguage) { // <--- Odbieram
         }
         Spacer(modifier = Modifier.height(30.dp))
 
+        // Odpowiedzi
         currentQuestion.options.forEachIndexed { index, option ->
             val buttonColor = when {
                 selectedOption != null && index == currentQuestion.correctIndex -> Color(0xFF4CAF50)
@@ -79,7 +94,7 @@ fun QuizScreen(category: QuizCategory, language: AppLanguage) { // <--- Odbieram
                     selectedOption = null
                     isAnswerCorrect = false
                 },
-                modifier = Modifier.fillMaxWidth(0.5f)
+                modifier = Modifier.fillMaxWidth(0.5f).align(Alignment.CenterHorizontally)
             ) {
                 Text(nextText)
             }
@@ -90,8 +105,6 @@ fun QuizScreen(category: QuizCategory, language: AppLanguage) { // <--- Odbieram
 fun generateQuestion(category: QuizCategory, language: AppLanguage): QuizQuestion {
     val correctElement = periodicTableData.random()
     val distractors = periodicTableData.filter { it != correctElement }.shuffled().take(3)
-
-    // Pobieramy nazwę w odpowiednim języku
     val elName = correctElement.getName(language)
 
     val questionType = when (category) {
@@ -106,7 +119,6 @@ fun generateQuestion(category: QuizCategory, language: AppLanguage): QuizQuestio
     val wrongAnswers: List<String>
 
     if (language == AppLanguage.PL) {
-        // --- POLSKI ---
         when (questionType) {
             0 -> {
                 questionText = "Jaka jest masa atomowa pierwiastka: $elName?"
@@ -125,7 +137,6 @@ fun generateQuestion(category: QuizCategory, language: AppLanguage): QuizQuestio
             }
         }
     } else {
-        // --- ANGIELSKI ---
         when (questionType) {
             0 -> {
                 questionText = "What is the atomic mass of: $elName?"
